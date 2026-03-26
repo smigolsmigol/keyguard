@@ -1,0 +1,39 @@
+{
+  "name": "keyguard",
+  "version": "0.1.0",
+  "description": "The missing security layer for open source projects. Scan, fix, and enforce secret hygiene, supply chain integrity, and project health.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "keyguard": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "tsc"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "security", "secrets", "api-keys", "supply-chain", "open-source",
+    "ci-cd", "github-actions", "mcp", "llm", "ai", "scanner", "linter",
+    "pre-commit", "devtools", "devsecops"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smigolsmigol/keyguard.git"
+  }
+}

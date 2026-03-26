@@ -1,5 +1,5 @@
-import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { SECRET_PATTERNS, BANNED_FILES, MCP_CONFIG_FILES } from '../utils/patterns.js';
 import type { Finding, PillarResult, ScanContext } from '../types.js';
 
@@ -52,7 +52,29 @@ function checkBannedFiles(projectRoot: string): Finding[] {
   const findings: Finding[] = [];
 
   for (const banned of BANNED_FILES) {
-    if (banned.includes('*')) continue; // glob patterns handled separately
+    if (banned.includes('*')) {
+      // glob pattern like *.pem, *.key, *.p12 - check root dir for matches
+      const ext = banned.startsWith('*.') ? banned.slice(1) : null;
+      if (!ext) continue;
+      try {
+        const entries = readdirSync(projectRoot);
+        for (const entry of entries) {
+          if (entry.endsWith(ext)) {
+            findings.push({
+              rule: 'banned-file',
+              message: `Sensitive file "${entry}" matches banned pattern "${banned}"`,
+              severity: 'high',
+              file: entry,
+              fix: `Remove ${entry} from the repository and add ${banned} to .gitignore`,
+              autoFixable: false,
+            });
+          }
+        }
+      } catch {
+        // can't read directory, skip
+      }
+      continue;
+    }
     const fullPath = join(projectRoot, banned);
     if (existsSync(fullPath)) {
       findings.push({
@@ -119,8 +141,9 @@ export async function scan(ctx: ScanContext): Promise<PillarResult> {
 
   const scannableFiles = ctx.files.filter(isScannableFile);
   for (const file of scannableFiles) {
-    const fullPath = join(ctx.projectRoot, file);
-    const results = scanFileForSecrets(fullPath, file);
+    // ctx.files contains absolute paths from listFiles(), don't double-join
+    const relPath = relative(ctx.projectRoot, file);
+    const results = scanFileForSecrets(file, relPath);
     findings.push(...results);
   }
 

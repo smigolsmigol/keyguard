@@ -41,8 +41,9 @@ export async function runScan(projectRoot: string): Promise<ScanReport> {
     }
   }
 
-  const score = results.reduce((acc, r) => acc + SCORE_MAP[r.status], 0);
-  const maxScore = results.length;
+  const nonSkipped = results.filter((r) => r.status !== 'skip');
+  const score = nonSkipped.reduce((acc, r) => acc + SCORE_MAP[r.status], 0);
+  const maxScore = nonSkipped.length;
   const passed = results.every((r) => r.status !== 'fail');
 
   return { results, score, maxScore, passed };
@@ -84,13 +85,15 @@ async function loadPillars(): Promise<PillarFn[]> {
 }
 
 // ansi helpers
+const NO_COLOR = !!process.env.NO_COLOR || process.argv.includes('--no-color');
+const ansi = (code: string) => NO_COLOR ? (s: string) => s : (s: string) => `\x1b[${code}m${s}\x1b[0m`;
 const c = {
-  green: (s: string) => `\x1b[32m${s}\x1b[0m`,
-  red: (s: string) => `\x1b[31m${s}\x1b[0m`,
-  yellow: (s: string) => `\x1b[33m${s}\x1b[0m`,
-  dim: (s: string) => `\x1b[2m${s}\x1b[0m`,
-  bold: (s: string) => `\x1b[1m${s}\x1b[0m`,
-  cyan: (s: string) => `\x1b[36m${s}\x1b[0m`,
+  green: ansi('32'),
+  red: ansi('31'),
+  yellow: ansi('33'),
+  dim: ansi('2'),
+  bold: ansi('1'),
+  cyan: ansi('36'),
 };
 
 const STATUS_ICON: Record<Status, string> = {

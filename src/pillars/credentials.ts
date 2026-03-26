@@ -16,10 +16,12 @@ function patternCovered(pattern: string, lines: string[]): boolean {
   for (const line of lines) {
     if (line === '' || line.startsWith('#')) continue;
     if (line === pattern) return true;
-    // .env.* covers .env.local, .env.production, etc
-    if (pattern === '.env.*' && (line === '.env*' || line === '.env.*')) return true;
-    // *.key covers all .key files
+    // .env* covers .env, .env.local, .env.production, etc
+    if (pattern.startsWith('.env') && (line === '.env*' || line === '.env.*')) return true;
+    // *.key covers all .key files, etc
     if (pattern.startsWith('*.') && line === pattern) return true;
+    // a glob in gitignore that covers our pattern: e.g. *.pem covers any .pem
+    if (line.startsWith('*.') && pattern.endsWith(line.slice(1))) return true;
   }
   return false;
 }
@@ -106,7 +108,7 @@ function checkVaultConfig(ctx: ScanContext): Finding[] {
   const findings: Finding[] = [];
   const vaultProvider = ctx.config.credentials?.vault_provider;
 
-  if (!vaultProvider) {
+  if (!vaultProvider || vaultProvider === 'none') {
     findings.push({
       rule: 'no-vault-config',
       message: 'No vault provider configured in .keyguard.yml',

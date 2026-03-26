@@ -5,11 +5,24 @@ interface ActionRef {
 }
 
 export function parseActionRef(usesLine: string): ActionRef | null {
-  // handles "uses: actions/checkout@v4" or just "actions/checkout@v4"
-  const raw = usesLine.includes(':') ? usesLine.split(':').slice(1).join(':').trim() : usesLine.trim();
-  const match = raw.match(/^([^/]+)\/([^@]+)@(\S+)/);
-  if (!match) return null;
-  return { owner: match[1], repo: match[2], ref: match[3] };
+  // handles "uses: actions/checkout@v4", "- uses: actions/cache/restore@v4", or bare ref
+  let raw = usesLine.trim();
+  // strip "- uses:" or "uses:" prefix if present
+  const prefixMatch = raw.match(/^(?:-\s+)?uses:\s*(.*)/);
+  if (prefixMatch) raw = prefixMatch[1].trim();
+  // skip local actions and docker refs
+  if (raw.startsWith('.') || raw.startsWith('docker://')) return null;
+  // split on first @ to separate action path from ref
+  const atIdx = raw.indexOf('@');
+  if (atIdx === -1) return null;
+  const actionPath = raw.slice(0, atIdx);
+  const ref = raw.slice(atIdx + 1).split(/\s/)[0];
+  // owner/repo or owner/repo/subpath
+  const slashIdx = actionPath.indexOf('/');
+  if (slashIdx === -1) return null;
+  const owner = actionPath.slice(0, slashIdx);
+  const repo = actionPath.slice(slashIdx + 1);
+  return { owner, repo, ref };
 }
 
 /**

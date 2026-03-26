@@ -51,7 +51,7 @@ export async function scan(ctx: ScanContext): Promise<PillarResult> {
         message: `Config integrity hash mismatch (expected ${ctx.config.integrity.slice(0, 12)}..., got ${computed.slice(0, 12)}...)`,
         severity: 'critical',
         file: '.keyguard.yml',
-        fix: 'Regenerate the integrity hash with `keyguard init --rehash` or verify the config has not been tampered with',
+        fix: 'Regenerate the integrity hash with `keyguard fix` or verify the config has not been tampered with',
         autoFixable: true,
       });
     } else {
@@ -68,7 +68,7 @@ export async function scan(ctx: ScanContext): Promise<PillarResult> {
       message: 'No integrity hash in .keyguard.yml',
       severity: 'low',
       file: '.keyguard.yml',
-      fix: 'Add an integrity hash with `keyguard init --rehash` to detect config tampering',
+      fix: 'Add an integrity hash with `keyguard fix` to detect config tampering',
     });
   }
 

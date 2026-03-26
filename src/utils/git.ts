@@ -8,6 +8,7 @@ const SKIP_DIRS = new Set([
   'dist',
   'build',
   'venv',
+  '.venv',
   '__pycache__',
 ]);
 
@@ -63,23 +64,54 @@ export function readGitignore(projectRoot: string): string[] {
     .filter((line) => line && !line.startsWith('#'));
 }
 
+function gitignorePatternToRegex(pattern: string): RegExp {
+  // strip trailing slash (marks directory-only, we don't distinguish)
+  let p = pattern.replace(/\/$/, '');
+  const anchored = p.startsWith('/');
+  if (anchored) p = p.slice(1);
+
+  // escape regex special chars except our glob chars
+  let regex = '';
+  let i = 0;
+  while (i < p.length) {
+    const ch = p[i];
+    if (ch === '*' && p[i + 1] === '*') {
+      // ** matches everything including path separators
+      if (p[i + 2] === '/') {
+        regex += '(?:.*/)?';
+        i += 3;
+      } else {
+        regex += '.*';
+        i += 2;
+      }
+    } else if (ch === '*') {
+      regex += '[^/]*';
+      i++;
+    } else if (ch === '?') {
+      regex += '[^/]';
+      i++;
+    } else if ('.+^${}()|[]\\'.includes(ch)) {
+      regex += '\\' + ch;
+      i++;
+    } else {
+      regex += ch;
+      i++;
+    }
+  }
+
+  if (anchored) {
+    return new RegExp(`^${regex}(?:/|$)`);
+  }
+  // unanchored: match basename or any path component
+  return new RegExp(`(?:^|/)${regex}(?:/|$)`);
+}
+
 export function isGitignored(file: string, patterns: string[]): boolean {
   const normalized = file.replace(/\\/g, '/');
   for (const pattern of patterns) {
     if (!pattern) continue;
-    // exact directory match: pattern like "dist" or "dist/"
-    const cleanPattern = pattern.replace(/\/$/, '');
-    if (normalized.includes(`/${cleanPattern}/`) || normalized.endsWith(`/${cleanPattern}`)) {
-      return true;
-    }
-    // glob suffix: *.log, *.pem
-    if (pattern.startsWith('*')) {
-      const suffix = pattern.slice(1);
-      if (normalized.endsWith(suffix)) return true;
-    }
-    // exact filename match
-    const basename = normalized.split('/').pop() ?? '';
-    if (basename === pattern) return true;
+    const re = gitignorePatternToRegex(pattern);
+    if (re.test(normalized)) return true;
   }
   return false;
 }

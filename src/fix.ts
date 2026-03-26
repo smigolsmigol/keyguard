@@ -54,12 +54,14 @@ async function pinCIActions(projectRoot: string, fixed: string[], manual: string
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (!trimmed.startsWith('uses:')) {
+      // match both top-level "uses:" and step-level "- uses:"
+      const usesMatch = trimmed.match(/^(?:-\s+)?uses:\s*(.+)/);
+      if (!usesMatch) {
         updatedLines.push(line);
         continue;
       }
 
-      const ref = parseActionRef(trimmed);
+      const ref = parseActionRef(usesMatch[1]);
       if (!ref) {
         updatedLines.push(line);
         continue;
@@ -81,7 +83,8 @@ async function pinCIActions(projectRoot: string, fixed: string[], manual: string
       const pinnedUses = `${ref.owner}/${ref.repo}@${sha}`;
       const comment = `# ${ref.ref}`;
       const indent = line.match(/^(\s*)/)?.[1] ?? '';
-      updatedLines.push(`${indent}uses: ${pinnedUses} ${comment}`);
+      const prefix = trimmed.startsWith('-') ? '- uses' : 'uses';
+      updatedLines.push(`${indent}${prefix}: ${pinnedUses} ${comment}`);
       modified = true;
       fixed.push(`Pinned ${ref.owner}/${ref.repo}@${ref.ref} -> ${sha.slice(0, 7)} in ${file}`);
     }
@@ -250,11 +253,13 @@ This project uses [KeyGuard](https://github.com/smigolsmigol/keyguard) to enforc
 }
 
 // ansi helpers
+const NO_COLOR = !!process.env.NO_COLOR || process.argv.includes('--no-color');
+const ansi = (code: string) => NO_COLOR ? (s: string) => s : (s: string) => `\x1b[${code}m${s}\x1b[0m`;
 const c = {
-  green: (s: string) => `\x1b[32m${s}\x1b[0m`,
-  yellow: (s: string) => `\x1b[33m${s}\x1b[0m`,
-  bold: (s: string) => `\x1b[1m${s}\x1b[0m`,
-  dim: (s: string) => `\x1b[2m${s}\x1b[0m`,
+  green: ansi('32'),
+  yellow: ansi('33'),
+  bold: ansi('1'),
+  dim: ansi('2'),
 };
 
 export function formatFix(result: FixResult): string {

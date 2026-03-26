@@ -10,8 +10,10 @@ export function loadYaml<T>(filePath: string): T | null {
   }
 }
 
-export function loadYamlString<T>(content: string): T {
-  return yaml.load(content) as T;
+export function loadYamlString<T>(content: string): T | null {
+  const result = yaml.load(content);
+  if (result === undefined || result === null) return null;
+  return result as T;
 }
 
 export function dumpYaml(data: unknown): string {

@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { loadYamlString } from '../utils/yaml.js';
 import type { Finding, PillarResult, ScanContext } from '../types.js';
 
@@ -39,7 +39,7 @@ function scanWorkflow(
   }
 
   const workflow = loadYamlString<Workflow>(content);
-  if (!workflow) return [];
+  if (!workflow || typeof workflow !== 'object') return [];
 
   const findings: Finding[] = [];
   const allowedSet = new Set(writeAllowed);
@@ -62,7 +62,8 @@ function scanWorkflow(
     const perms = job.permissions ?? workflow.permissions;
     if (perms) {
       for (const [scope, level] of Object.entries(perms)) {
-        if (level === 'write' && !allowedSet.has(`${relPath}:${jobName}`)) {
+        const workflowBasename = basename(relPath);
+        if (level === 'write' && !allowedSet.has(`${workflowBasename}:${jobName}`)) {
           findings.push({
             rule: 'write-permission',
             message: `Job "${jobName}" has ${scope}: write`,

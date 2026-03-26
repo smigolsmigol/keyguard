@@ -33,12 +33,8 @@ export function generateConfig(projectRoot: string): string {
   if (stack.python) {
     scanPaths.push('!venv/**', '!__pycache__/**', '!.venv/**');
   }
-  if (stack.docker) {
-    writeAllowed.push('packages: write');
-  }
-  if (stack.workflows) {
-    writeAllowed.push('contents: read');
-  }
+  // write_allowed entries use basename format: "ci.yml:deploy"
+  // users populate these with workflow:job pairs that legitimately need write permissions
 
   const config: KeyguardConfig = {
     version: 1,

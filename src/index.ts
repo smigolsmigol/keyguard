@@ -8,11 +8,12 @@ import { computeConfigHash } from './utils/hash.js';
 const VERSION = '0.1.0';
 const CONFIG_FILE = '.keyguard.yml';
 
-// ansi
-const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
-const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
-const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
-const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
+const NO_COLOR = !!process.env.NO_COLOR || process.argv.includes('--no-color');
+const ansi = (code: string) => NO_COLOR ? (s: string) => s : (s: string) => `\x1b[${code}m${s}\x1b[0m`;
+const bold = ansi('1');
+const green = ansi('32');
+const red = ansi('31');
+const dim = ansi('2');
 
 function banner(): void {
   console.log(`\n${bold('KeyGuard')} ${dim(`v${VERSION}`)}\n`);
@@ -120,6 +121,11 @@ async function main(): Promise<void> {
       break;
     case 'verify':
       cmdVerify();
+      break;
+    case 'version':
+    case '--version':
+    case '-v':
+      console.log(VERSION);
       break;
     case 'help':
     case '--help':

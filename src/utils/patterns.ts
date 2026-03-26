@@ -1,4 +1,4 @@
-export type Severity = 'critical' | 'high' | 'medium';
+import type { Severity } from '../types.js';
 
 export interface SecretPattern {
   name: string;

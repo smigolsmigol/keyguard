@@ -1,11 +1,11 @@
 {
-  "name": "keyguard",
+  "name": "kguard",
   "version": "0.1.0",
   "description": "The missing security layer for open source projects. Scan, fix, and enforce secret hygiene, supply chain integrity, and project health.",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "keyguard": "dist/index.js"
+    "kguard": "dist/index.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

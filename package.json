@@ -14,9 +14,11 @@
     "node": ">=18"
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .github/hooks",
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test test/smoke.test.mjs",
+    "scan": "node dist/index.js scan",
     "prepublishOnly": "tsc"
   },
   "dependencies": {

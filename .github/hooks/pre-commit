@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Pre-commit hook: block commits containing secrets.
+# Installed automatically via npm prepare script.
+
+set -euo pipefail
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$STAGED" ] && exit 0
+
+BLOCKED=0
+
+while IFS= read -r file; do
+  case "$file" in
+    *.pem|*.key|*.p12|*.pfx|*_token|*_secret)
+      echo "BLOCKED: credential file staged: $file"
+      BLOCKED=1
+      ;;
+    .env|.env.*|.dev.vars|.npmrc)
+      echo "BLOCKED: env/config file staged: $file"
+      BLOCKED=1
+      ;;
+  esac
+done <<< "$STAGED"
+
+PATTERNS=(
+  'sk-[a-zA-Z0-9]{20,}'
+  'sk-ant-[a-zA-Z0-9-]{20,}'
+  'xai-[a-zA-Z0-9]{20,}'
+  'AIza[a-zA-Z0-9_-]{35}'
+  'AKIA[0-9A-Z]{16}'
+  'ghp_[a-zA-Z0-9]{36}'
+  'github_pat_[a-zA-Z0-9_]{82}'
+  'PRIVATE KEY-----'
+)
+
+while IFS= read -r file; do
+  [[ "$file" == .github/hooks/* ]] && continue
+  CONTENT=$(git show ":$file" 2>/dev/null || true)
+  [ -z "$CONTENT" ] && continue
+  for pattern in "${PATTERNS[@]}"; do
+    if echo "$CONTENT" | grep -qE "$pattern"; then
+      echo "BLOCKED: secret pattern ($pattern) found in: $file"
+      BLOCKED=1
+    fi
+  done
+done <<< "$STAGED"
+
+if [ "$BLOCKED" -ne 0 ]; then
+  echo ""
+  echo "Commit blocked. Review and remove secrets before committing."
+  exit 1
+fi
+
+if command -v gitleaks &>/dev/null; then
+  if ! gitleaks protect --staged --no-banner 2>/dev/null; then
+    echo "BLOCKED: gitleaks found secrets in staged files."
+    exit 1
+  fi
+fi
+
+exit 0

@@ -144,6 +144,12 @@ Respects the `NO_COLOR` environment variable.
 
 Node.js 18 or later. Single dependency: `js-yaml`.
 
+## Security
+
+KeyGuard dogfoods itself: `kguard scan` runs in CI on every push. All GitHub Actions are pinned to commit SHAs. npm packages are published with Sigstore provenance attestation. Pre-commit hooks block secrets locally.
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+
 ## Context
 
 On March 24, 2026, [LiteLLM was supply-chain attacked](https://thehackernews.com/2026/03/teampcp-backdoors-litellm-versions.html) through compromised GitHub Action tags. Malicious packages hit 95 million daily PyPI downloads. The same week, hundreds of GitHub accounts were [compromised via force-push attacks](https://www.stepsecurity.io/blog/forcememo-hundreds-of-github-python-repos-compromised-via-account-takeover-and-force-push). Open source security tooling detected these attacks, but nothing prevented them.

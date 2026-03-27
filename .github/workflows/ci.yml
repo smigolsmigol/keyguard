@@ -37,11 +37,11 @@ jobs:
       - name: typecheck
         run: npx tsc --noEmit
 
-      - name: test
-        run: npm test
-
       - name: build
         run: npm run build
+
+      - name: test
+        run: npm test
 
       - name: dogfood
         run: node dist/index.js scan --no-color

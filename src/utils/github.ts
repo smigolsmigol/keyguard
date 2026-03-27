@@ -17,17 +17,27 @@ export function parseActionRef(usesLine: string): ActionRef | null {
   if (atIdx === -1) return null;
   const actionPath = raw.slice(0, atIdx);
   const ref = raw.slice(atIdx + 1).split(/\s/)[0];
-  // owner/repo or owner/repo/subpath
+  // owner/repo or owner/repo/subpath - extract only owner/repo for API calls
   const slashIdx = actionPath.indexOf('/');
   if (slashIdx === -1) return null;
   const owner = actionPath.slice(0, slashIdx);
-  const repo = actionPath.slice(slashIdx + 1);
+  const rest = actionPath.slice(slashIdx + 1);
+  const secondSlash = rest.indexOf('/');
+  const repo = secondSlash === -1 ? rest : rest.slice(0, secondSlash);
   return { owner, repo, ref };
+}
+
+function githubHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { Accept: 'application/vnd.github.v3+json' };
+  const token = process.env.GITHUB_TOKEN;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
 }
 
 /**
  * Resolve a GitHub Action tag to its full commit SHA.
  * Handles annotated tags by dereferencing through the tag object.
+ * Set GITHUB_TOKEN for 5000 req/hr instead of 60.
  */
 export async function resolveActionSHA(
   owner: string,
@@ -35,26 +45,30 @@ export async function resolveActionSHA(
   tag: string,
 ): Promise<string | null> {
   try {
-    // try as a git ref first (works for lightweight tags and branches)
     const refRes = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/git/ref/tags/${tag}`,
-      { headers: { Accept: 'application/vnd.github.v3+json' } },
+      { headers: githubHeaders() },
     );
 
+    if (refRes.status === 403) {
+      const remaining = refRes.headers.get('x-ratelimit-remaining');
+      if (remaining === '0') {
+        console.error('GitHub API rate limit exceeded. Set GITHUB_TOKEN env var for 5000 req/hr.');
+      }
+      return null;
+    }
     if (!refRes.ok) return null;
 
     const refData = (await refRes.json()) as { object: { type: string; sha: string } };
 
-    // lightweight tag points directly at a commit
     if (refData.object.type === 'commit') {
       return refData.object.sha;
     }
 
-    // annotated tag: dereference to get the underlying commit
     if (refData.object.type === 'tag') {
       const tagRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/git/tags/${refData.object.sha}`,
-        { headers: { Accept: 'application/vnd.github.v3+json' } },
+        { headers: githubHeaders() },
       );
       if (!tagRes.ok) return null;
 

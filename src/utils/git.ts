@@ -108,12 +108,18 @@ function gitignorePatternToRegex(pattern: string): RegExp {
 
 export function isGitignored(file: string, patterns: string[]): boolean {
   const normalized = file.replace(/\\/g, '/');
+  let ignored = false;
   for (const pattern of patterns) {
     if (!pattern) continue;
-    const re = gitignorePatternToRegex(pattern);
-    if (re.test(normalized)) return true;
+    if (pattern.startsWith('!')) {
+      const re = gitignorePatternToRegex(pattern.slice(1));
+      if (re.test(normalized)) ignored = false;
+    } else {
+      const re = gitignorePatternToRegex(pattern);
+      if (re.test(normalized)) ignored = true;
+    }
   }
-  return false;
+  return ignored;
 }
 
 export function fileExists(path: string): boolean {

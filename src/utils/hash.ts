@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 export function computeHash(content: string): string {
-  return createHash('sha256').update(content).digest('hex');
+  return createHash('sha256').update(content.replace(/\r\n/g, '\n')).digest('hex');
 }
 
 /** Hash a .keyguard.yml file, stripping the `integrity:` line so the hash doesn't include itself. */

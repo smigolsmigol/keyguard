@@ -14,7 +14,7 @@ export const SECRET_PATTERNS: SecretPattern[] = [
   },
   {
     name: 'Anthropic API Key',
-    pattern: /sk-ant-[a-zA-Z0-9]{20,}/,
+    pattern: /sk-ant-[a-zA-Z0-9_-]{20,}/,
     severity: 'critical',
   },
   {
@@ -49,7 +49,7 @@ export const SECRET_PATTERNS: SecretPattern[] = [
   },
   {
     name: 'Slack Token',
-    pattern: /xox[bpas]-[a-zA-Z0-9-]+/,
+    pattern: /xox[bpas]-[a-zA-Z0-9-]{10,}/,
     severity: 'high',
   },
   {
@@ -76,6 +76,26 @@ export const SECRET_PATTERNS: SecretPattern[] = [
     name: 'Hardcoded Password',
     pattern: /(?:password|passwd|pwd)\s*[=:]\s*["'][^"']{8,}["']/i,
     severity: 'medium',
+  },
+  {
+    name: 'Telegram Bot Token',
+    pattern: /\d{8,10}:[a-zA-Z0-9_-]{35}/,
+    severity: 'critical',
+  },
+  {
+    name: 'npm Token',
+    pattern: /npm_[a-zA-Z0-9]{36,}/,
+    severity: 'critical',
+  },
+  {
+    name: 'PyPI Token',
+    pattern: /pypi-[a-zA-Z0-9_-]{100,}/,
+    severity: 'critical',
+  },
+  {
+    name: 'SendGrid API Key',
+    pattern: /SG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43}/,
+    severity: 'critical',
   },
 ];
 

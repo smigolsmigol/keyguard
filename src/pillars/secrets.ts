@@ -1,5 +1,6 @@
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, basename, relative } from 'node:path';
+import { listFiles } from '../utils/git.js';
 import { SECRET_PATTERNS, BANNED_FILES, MCP_CONFIG_FILES } from '../utils/patterns.js';
 import type { Finding, PillarResult, ScanContext } from '../types.js';
 
@@ -50,41 +51,47 @@ function scanFileForSecrets(filePath: string, relPath: string): Finding[] {
 
 function checkBannedFiles(projectRoot: string): Finding[] {
   const findings: Finding[] = [];
+  const allFiles = listFiles(projectRoot);
 
+  // pre-compute: exact names and glob extensions from BANNED_FILES
+  const exactNames = new Set<string>();
+  const bannedExts: string[] = [];
   for (const banned of BANNED_FILES) {
-    if (banned.includes('*')) {
-      // glob pattern like *.pem, *.key, *.p12 - check root dir for matches
-      const ext = banned.startsWith('*.') ? banned.slice(1) : null;
-      if (!ext) continue;
-      try {
-        const entries = readdirSync(projectRoot);
-        for (const entry of entries) {
-          if (entry.endsWith(ext)) {
-            findings.push({
-              rule: 'banned-file',
-              message: `Sensitive file "${entry}" matches banned pattern "${banned}"`,
-              severity: 'high',
-              file: entry,
-              fix: `Remove ${entry} from the repository and add ${banned} to .gitignore`,
-              autoFixable: false,
-            });
-          }
-        }
-      } catch {
-        // can't read directory, skip
-      }
-      continue;
+    if (banned.startsWith('*.') && banned.includes('.')) {
+      bannedExts.push(banned.slice(1));
+    } else {
+      exactNames.add(banned);
     }
-    const fullPath = join(projectRoot, banned);
-    if (existsSync(fullPath)) {
+  }
+
+  for (const fullPath of allFiles) {
+    const rel = relative(projectRoot, fullPath).replace(/\\/g, '/');
+    const name = basename(fullPath);
+
+    if (exactNames.has(name)) {
       findings.push({
         rule: 'banned-file',
-        message: `Sensitive file "${banned}" exists in project root`,
+        message: `Sensitive file "${rel}" matches banned name "${name}"`,
         severity: 'high',
-        file: banned,
-        fix: `Remove ${banned} from the repository and add it to .gitignore`,
+        file: rel,
+        fix: `Remove ${rel} from the repository and add ${name} to .gitignore`,
         autoFixable: false,
       });
+      continue;
+    }
+
+    for (const ext of bannedExts) {
+      if (name.endsWith(ext)) {
+        findings.push({
+          rule: 'banned-file',
+          message: `Sensitive file "${rel}" matches banned pattern "*${ext}"`,
+          severity: 'high',
+          file: rel,
+          fix: `Remove ${rel} from the repository and add *${ext} to .gitignore`,
+          autoFixable: false,
+        });
+        break;
+      }
     }
   }
 

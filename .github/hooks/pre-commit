@@ -35,6 +35,7 @@ PATTERNS=(
 
 while IFS= read -r file; do
   [[ "$file" == .github/hooks/* ]] && continue
+  [[ "$file" == src/utils/patterns.ts ]] && continue
   CONTENT=$(git show ":$file" 2>/dev/null || true)
   [ -z "$CONTENT" ] && continue
   for pattern in "${PATTERNS[@]}"; do

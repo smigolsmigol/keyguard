@@ -1,12 +1,16 @@
 name: scorecard
-
 on:
+  branch_protection_rule:
   schedule:
     - cron: "0 5 * * 1"
   push:
     branches: [main]
   workflow_dispatch:
-
+permissions: read-all
 jobs:
   call:
     uses: smigolsmigol/.github/.github/workflows/scorecard.yml@main
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read

@@ -17,3 +17,14 @@ dist/
 .env.development
 .pypirc
 docs/
+
+# additional secret patterns
+.dev.keys
+*.pfx
+credentials.json
+*_token
+*_secret
+
+# local agent state
+.claude/
+.mcp.json

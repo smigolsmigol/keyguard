@@ -1,5 +1,7 @@
 # KeyGuard
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/smigolsmigol/keyguard/badge)](https://scorecard.dev/viewer/?uri=github.com/smigolsmigol/keyguard)
+
 Security linter for open source projects. Finds and fixes what others only report.
 
 ```bash

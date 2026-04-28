@@ -7,27 +7,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
-  semgrep:
-    name: semgrep (security-audit + secrets)
-    runs-on: ubuntu-latest
-    container:
-      image: semgrep/semgrep:1.156.0
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - run: semgrep scan --config p/security-audit --config p/secrets --error --metrics=off
-
-  npm-audit:
-    name: npm audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: "20"
-      - run: npm ci
-      - run: npm audit --audit-level=high
-        continue-on-error: true
+  call:
+    uses: smigolsmigol/.github/.github/workflows/security-typescript.yml@main

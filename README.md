@@ -1,179 +1,69 @@
 # KeyGuard
 
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/smigolsmigol/keyguard/badge)](https://scorecard.dev/viewer/?uri=github.com/smigolsmigol/keyguard)
+KeyGuard is an experimental Node.js CLI for checking a repository's basic security hygiene. It reports findings across secret patterns, GitHub Actions configuration, credential-file exclusions, configuration integrity, and project-health files. It can also make a limited set of local fixes.
 
-Security linter for open source projects. Finds and fixes what others only report.
+## Run from a checkout
 
-```bash
-npx keyguard scan
-```
-
-```
-KeyGuard v0.1.0
-
-  ✓ Secrets          PASS   No secrets detected
-  ✓ Supply Chain      PASS   All 7 workflow(s) pass supply chain checks
-  ✓ Credentials       PASS   Credential hygiene checks passed
-  ✓ Config Integrity  PASS   Configuration verified
-  ⚠ Health            WARN   2 health recommendation(s)
-
-  Score: 4.5/5
-```
-
-## Why
-
-Open source projects have standards for code quality (ESLint), dependency updates (Dependabot), and licensing. There's no equivalent for security posture: are CI actions pinned? Are secrets out of the codebase? Are AI coding tools blocked from reading `.env`?
-
-Existing tools scan and report. They generate alerts you'll ignore (35% of Dependabot PRs are closed without merging). KeyGuard scans and *fixes*.
-
-## What it checks
-
-**5 pillars, one command.**
-
-**Secrets** - scans source files for API keys (OpenAI, Anthropic, Google, AWS, Stripe, GitHub, HuggingFace, and more). Checks for banned files (`.env`, `.npmrc`, `.pypirc`, `*.pem`). Scans MCP configs for exposed credentials.
-
-**Supply Chain** - verifies GitHub Actions are pinned to commit SHAs, not mutable tags. Checks for explicit permissions blocks and flags unnecessary write access. This is the exact vector that [compromised LiteLLM](https://docs.litellm.ai/blog/security-update-march-2026) on March 24, 2026.
-
-**Credentials** - checks `.gitignore` covers secret files, verifies `.cursorignore` and `.claudeignore` exist (prevents AI coding tools from reading your secrets), checks vault configuration.
-
-**Config Integrity** - the `.keyguard.yml` config includes its own SHA-256 hash. If someone tampers with your security policy, the hash check fails. Self-protecting configuration.
-
-**Health** - checks for `SECURITY.md`, `CONTRIBUTING.md`, security section in README, pre-commit hooks.
-
-## Quick start
+Requires Node.js 18 or later.
 
 ```bash
-# scan your project
-npx keyguard scan
-
-# generate config with smart defaults
-npx keyguard init
-
-# auto-fix what it finds
-npx keyguard fix
-
-# verify config hasn't been tampered with
-npx keyguard verify
+npm ci --ignore-scripts
+npm run build
+node dist/index.js scan --no-color
 ```
 
-## The fix command
+The published package metadata names the package `kguard` and exposes the `kguard` command, but this repository does not provide a release receipt. Use the checkout commands above when evaluating this revision.
 
-This is the part that matters. Other tools tell you about 47 problems. KeyGuard fixes them.
+## Commands
 
-```bash
-npx keyguard fix
+```text
+kguard init      Create .keyguard.yml when one does not exist
+kguard scan      Report findings; exits nonzero when a pillar fails
+kguard fix       Apply supported local fixes
+kguard verify    Check the stored .keyguard.yml integrity hash
 ```
 
-```
-  ✓ Auto-fixed:
-    ✓ Pinned actions/checkout@v4 -> 34e1148 in ci.yml
-    ✓ Pinned actions/setup-node@v4 -> 4993ea5 in ci.yml
-    ✓ Added permissions block to deploy.yml
-    ✓ Added 5 patterns to .gitignore
-    ✓ Created .cursorignore
-    ✓ Created .claudeignore
-    ✓ Created SECURITY.md template
-    ✓ Updated .keyguard.yml integrity hash
+`init` creates a configuration based on detected project files. `scan` runs five implemented pillars:
 
-  ⚠ Manual action required:
-    • Enable 2FA on your GitHub account
-    • Set up a secrets vault and update .keyguard.yml
-    • Review branch protection rules
-```
+- Secrets: predefined regular expressions in selected text-file extensions, banned-file names, and known MCP configuration files.
+- Supply chain: GitHub Actions references in workflow jobs, top-level permissions, and write permissions outside the configuration allowlist.
+- Credentials: `.gitignore`, `.cursorignore`, `.claudeignore`, and an optional vault-provider setting.
+- Config integrity: consistency of the `.keyguard.yml` SHA-256 value.
+- Health: presence of `SECURITY.md`, `CONTRIBUTING.md`, a README Security section, and recognized pre-commit configuration.
 
-What `fix` does automatically:
-- Pins every GitHub Action to its commit SHA (resolves via GitHub API)
-- Adds `permissions: contents: read` to workflows missing it
-- Adds `.env`, `*.pem`, `*.key`, `.npmrc`, `.pypirc` to `.gitignore`
-- Creates `.cursorignore` and `.claudeignore` to block AI tools from reading secrets
-- Creates `SECURITY.md` with vulnerability reporting template
-- Recomputes the `.keyguard.yml` integrity hash
+`fix` may edit workflow YAML and `.gitignore`, create `.cursorignore`, `.claudeignore`, or `SECURITY.md`, and update the configuration integrity hash. Review its diff before committing. Resolving an unpinned GitHub Action tag uses the GitHub API; unresolved references are reported for manual action.
 
-## The config file
+## Configuration
+
+`keyguard init` writes `.keyguard.yml`. The current implementation reads CI write allowlist and vault-provider values, and checks the integrity value. Keep the generated configuration under review alongside the repository policy.
 
 ```yaml
 version: 1
-integrity: "sha256:a1b2c3..."
-
 secrets:
-  scan:
-    - "**/*.ts"
-    - "**/*.py"
-    - "**/*.json"
-
+  patterns: []
 ci:
   pin_actions: true
   require_permissions: true
-  write_allowed:
-    - "release.yml:publish"
-
+  write_allowed: []
 credentials:
   vault_provider: none
 ```
 
-The `integrity` field is a SHA-256 hash of the file's own content (excluding that line). An attacker who gains repo access can't silently weaken your security policy without the hash check failing. Run `keyguard verify` to check it.
+## Limits
 
-## CI integration
+KeyGuard is not a replacement for a secret manager, dependency vulnerability scanner, runtime security controls, GitHub branch protection, or incident monitoring. Its secret detection is pattern-based and can miss secrets or report false positives. Its integrity hash detects configuration changes that do not also update the hash; it is not protection against an attacker who can modify both the configuration and its hash.
 
-```yaml
-- name: security check
-  run: npx keyguard scan
-```
-
-KeyGuard exits with code 1 on any failure. Drop it in your CI pipeline and it blocks PRs that introduce security issues.
-
-## What this doesn't do
-
-KeyGuard is a project-level security linter. It doesn't:
-- Replace runtime security tools (WAFs, rate limiters, auth systems)
-- Scan dependencies for CVEs (use `npm audit`, Socket, Snyk for that)
-- Monitor for breaches after they happen (use GitGuardian, TruffleHog for that)
-- Manage secrets at runtime (use Infisical, Doppler, HashiCorp Vault for that)
-
-It works alongside all of these. KeyGuard checks that your project is set up to use them correctly.
-
-## Flags
-
-```
---no-color    Disable colored output
---version     Print version
---help        Show usage
-```
-
-Respects the `NO_COLOR` environment variable.
-
-## Requirements
-
-Node.js 18 or later. Single dependency: `js-yaml`.
+The repository currently has one smoke-test file covering scan startup, version output, and help output. Treat a passing scan as evidence only for these implemented local checks.
 
 ## Security
 
-KeyGuard dogfoods itself: `kguard scan` runs in CI on every push. All GitHub Actions are pinned to commit SHAs. npm packages are published with Sigstore provenance attestation. Pre-commit hooks block secrets locally.
+Please follow [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
-See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+## Development
 
-## Context
+```bash
+npm run build
+npm test
+```
 
-On March 24, 2026, [LiteLLM was supply-chain attacked](https://thehackernews.com/2026/03/teampcp-backdoors-litellm-versions.html) through compromised GitHub Action tags. Malicious packages hit 95 million daily PyPI downloads. The same week, hundreds of GitHub accounts were [compromised via force-push attacks](https://www.stepsecurity.io/blog/forcememo-hundreds-of-github-python-repos-compromised-via-account-takeover-and-force-push). Open source security tooling detected these attacks, but nothing prevented them.
-
-KeyGuard exists because reporting isn't enough. Projects need enforceable security baselines with auto-remediation.
-
-## Sibling projects
-
-The f3d1 ecosystem:
-
-- [`f3dx`](https://github.com/smigolsmigol/f3dx) - Rust runtime your Python imports. Drop-in for openai + anthropic SDKs with native SSE streaming, agent loop with concurrent tool dispatch, OTel emission. Includes `f3dx.cache` (content-addressable LLM response cache + tool-result memoization), `f3dx.router` (sequential / hedged-parallel LLM router), and `f3dx.fast` (CanonicalPrompt for prefix-cache hits, SpecToolDispatcher for streaming tool dispatch, budget_max_tokens hinting). `pip install f3dx`.
-- [`tracewright`](https://github.com/smigolsmigol/tracewright) - Trace-replay adapter for `pydantic-evals`. Read an f3dx or pydantic-ai logfire JSONL trace, get a `pydantic_evals.Dataset`. `pip install tracewright`. The `[cache]` extra wraps candidate fns with `f3dx.cache.cached_call`.
-- [`pydantic-cal`](https://github.com/smigolsmigol/pydantic-cal) - Calibration metrics for `pydantic-evals`: ECE, smECE, MCE, ACE, Brier, reliability diagrams, Fisher-Rao geometry kernel. `pip install pydantic-cal`.
-- [`f3dx-bench`](https://github.com/smigolsmigol/f3dx-bench) - Public real-prod-traffic LLM benchmark dashboard. CF Worker + R2 + duckdb-wasm. [Live](https://f3dx-bench.pages.dev).
-- [`llmkit`](https://github.com/smigolsmigol/llmkit) - Hosted API gateway with budget enforcement, session tracking, cost dashboards, MCP server. [llmkit.sh](https://llmkit.sh).
-
-f3dx-cache and f3dx-router used to be separate PyPI packages; folded into f3dx on 2026-04-30 as workspace members. The old packages stay live as deprecation shims for a few months.
-
-## License
-
-MIT
-
----
-
-Built by the team behind [LLMKit](https://github.com/smigolsmigol/llmkit).
+License: MIT.
